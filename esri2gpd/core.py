@@ -26,7 +26,7 @@ def _get_json_safely(response):
     return json
 
 
-def get(url, fields=None, where=None, limit=None, **kwargs):
+def get(url, fields=None, where=None, limit=None, headers=None, **kwargs):
     """
     Scrape features from a ArcGIS Server REST API and return a
     geopandas GeoDataFrame.
@@ -52,7 +52,7 @@ def get(url, fields=None, where=None, limit=None, **kwargs):
     >>> gdf
     """
     # Get the max record count
-    metadata = requests.get(url, params=dict(f="pjson")).json()
+    metadata = requests.get(url, params=dict(f="pjson"), headers=headers).json()
     max_record_count = metadata["maxRecordCount"]
 
     # default behavior matches all features
@@ -63,12 +63,15 @@ def get(url, fields=None, where=None, limit=None, **kwargs):
     else:
         fields = ", ".join(fields)
 
+    if headers is None:
+        headers = {'User-Agent': 'Mozilla/5.0'}
+
     # extract object IDs of features
     queryURL = f"{url}/query"
 
     # Get the total record count
     params = dict(where=where, returnCountOnly="true", f="json")
-    response = requests.get(queryURL, params=params)
+    response = requests.get(queryURL, params=params, headers=headers)
     total_size = _get_json_safely(response)["count"]
 
     # Check the limit
@@ -100,7 +103,7 @@ def get(url, fields=None, where=None, limit=None, **kwargs):
             params["resultRecordCount"] = remaining
 
         # get raw features
-        response = requests.get(queryURL, params=params)
+        response = requests.get(queryURL, params=params, headers=headers)
         json = _get_json_safely(response)
 
         # convert to GeoJSON and save
